@@ -8,13 +8,7 @@ import numpy as np
 
 # Step 1 - expected_value
 def expected_value(values, probabilities):
-
-    mean = 0
-
-    for i in range(len(values)):
-        mean += values[i]*probabilities[i]
-
-    return mean
+    return np.dot(values, probabilities)
 
 # Step 2 - one_reroll_die_value
 def one_reroll_die_value(sides):
