@@ -55,8 +55,61 @@ def pay_per_reroll_die_game(sides, reroll_cost):
             
     return {'threshold': int(best_t), 'value': float(best_val)}
 
-# Step 4 - red_black_card_game_value (not yet solved)
-# TODO: implement
+# Step 4 - red_black_card_game_value
+import numpy as np
+
+def red_black_card_game_value(num_red, num_black):
+    # DP table mapping (r, b) to the optimal expected value
+    # r goes from 0 to num_red, b goes from 0 to num_black
+    dp = np.zeros((num_red + 1, num_black + 1))
+    
+    # Base cases: if r = 0 and b = 0, value is 0.
+    # We iterate from r=0 up to num_red and b=0 up to num_black.
+    for r in range(num_red + 1):
+        for b in range(num_black + 1):
+            if r == 0 and b == 0:
+                dp[r, b] = 0.0
+                continue
+            
+            # If we choose to stop, payout is current accumulated value (0 from the current state perspective).
+            stop_val = 0.0
+            
+            # If we choose to draw:
+            # Probability of drawing red is r / (r + b)
+            # Probability of drawing black is b / (r + b)
+            draw_val = 0.0
+            total_cards = r + b
+            
+            if r > 0:
+                draw_val += (r / total_cards) * (1.0 + dp[r - 1, b])
+            if b > 0:
+                draw_val += (b / total_cards) * (-1.0 + dp[r, b - 1])
+                
+            # Optimal choice between stopping and drawing
+            # Ties resolve as stopping (so if stop_val >= draw_val, we stop)
+            if stop_val >= draw_val:
+                dp[r, b] = stop_val
+            else:
+                dp[r, b] = draw_val
+
+    # Expected value from the starting state
+    value = float(dp[num_red, num_black])
+    
+    # Determine if the optimal initial action is to stop now
+    # We compare stopping (0.0) with drawing from the full deck (num_red, num_black)
+    stop_now = True
+    if num_red > 0 or num_black > 0:
+        total_cards = num_red + num_black
+        draw_val = 0.0
+        if num_red > 0:
+            draw_val += (num_red / total_cards) * (1.0 + dp[num_red - 1, num_black])
+        if num_black > 0:
+            draw_val += (num_black / total_cards) * (-1.0 + dp[num_red, num_black - 1])
+            
+        if draw_val > 0.0:
+            stop_now = False
+
+    return {'value': value, 'stop_now': stop_now}
 
 # Step 5 - make_quotes (not yet solved)
 # TODO: implement
