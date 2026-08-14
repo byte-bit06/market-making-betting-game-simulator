@@ -115,8 +115,21 @@ def red_black_card_game_value(num_red, num_black):
 def make_quotes(fair_value, spread_width):
     return {'bid': fair_value - spread_width/2, 'ask': fair_value + spread_width/2}
 
-# Step 6 - execute_trade (not yet solved)
-# TODO: implement
+# Step 6 - execute_trade
+def execute_trade(state, side, bid, ask, size=1):
+
+    if side == 'buy':
+        newState = {
+            'cash': state['cash'] + ask*size,
+            'inventory': state['inventory'] - size
+        }
+    else:
+        newState = {
+            'cash': state['cash'] - bid*size,
+            'inventory': state['inventory'] + size
+        }
+
+    return newState
 
 # Step 7 - mark_to_market_pnl (not yet solved)
 # TODO: implement
