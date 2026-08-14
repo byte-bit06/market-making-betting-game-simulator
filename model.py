@@ -135,8 +135,26 @@ def execute_trade(state, side, bid, ask, size=1):
 def mark_to_market_pnl(cash, inventory, settlement_value):
     return cash + inventory*settlement_value
 
-# Step 8 - adverse_selection_loss (not yet solved)
-# TODO: implement
+# Step 8 - adverse_selection_loss
+import numpy as np
+
+def adverse_selection_loss(fair_value, bid, ask, informed_values, informed_probabilities):
+    vals = np.array(informed_values)
+    probs = np.array(informed_probabilities)
+    
+    # Calculate loss from buys: (v - ask) * 1{v > ask}
+    buy_loss = np.where(vals > ask, vals - ask, 0.0)
+    
+    # Calculate loss from sells: (bid - v) * 1{v < bid}
+    sell_loss = np.where(vals < bid, bid - vals, 0.0)
+    
+    # Total loss for each possible true value v
+    total_loss_per_val = buy_loss + sell_loss
+    
+    # Compute the expectation over the distribution
+    loss = expected_value(total_loss_per_val, probs)
+    
+    return float(loss)
 
 # Step 9 - uncertainty_spread (not yet solved)
 # TODO: implement
