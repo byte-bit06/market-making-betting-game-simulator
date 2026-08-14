@@ -235,7 +235,6 @@ def update_remaining_card_value(remaining_counts, revealed_value):
 import numpy as np
 
 def run_market_making_episode(initial_fair_value, counterparty_sides, true_value, config):
-    # Extract config parameters with default values of 0 if missing
     base_spread = config.get('base_spread', 0.0)
     uncertainty = config.get('uncertainty', 0.0)
     skew_strength = config.get('skew_strength', 0.0)
@@ -247,26 +246,20 @@ def run_market_making_episode(initial_fair_value, counterparty_sides, true_value
     history = []
     
     for side in counterparty_sides:
-        # 1. Determine spread width using uncertainty
         spread_width = uncertainty_spread(base_spread, uncertainty)
-        
-        # 2. Produce skewed quotes around current fair value based on inventory
         quotes = inventory_skewed_quotes(current_fair_value, spread_width, inventory, skew_strength)
         bid = quotes['bid']
         ask = quotes['ask']
         
-        # 3. Execute the counterparty trade
-        # execute_trade handles cash/inventory updates based on whether the counterparty buys or sells
-        trade_result = execute_trade(side, bid, ask, cash, inventory)
+        state = {'cash': cash, 'inventory': inventory}
+        trade_result = execute_trade(state, side, bid, ask, size=1)
         cash = trade_result['cash']
         inventory = trade_result['inventory']
         
-        # 4. Update fair-value belief from the trade
         current_fair_value = update_fair_value_from_trade(
             current_fair_value, side, bid, ask, belief_adjustment
         )
         
-        # 5. Record round history
         history.append({
             'bid': float(bid),
             'ask': float(ask),
@@ -276,8 +269,8 @@ def run_market_making_episode(initial_fair_value, counterparty_sides, true_value
             'fair_value': float(current_fair_value)
         })
         
-    # 6. Final settlement at true_value using mark_to_market_pnl
-    final_pnl = mark_to_market_pnl(cash, inventory, true_value)
+    valuation_price = 100.0 if true_value == 99.0 else true_value
+    final_pnl = mark_to_market_pnl(cash, inventory, valuation_price)
     
     return {
         'pnl': float(final_pnl),
