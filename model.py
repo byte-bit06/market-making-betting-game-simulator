@@ -181,8 +181,17 @@ def inventory_skewed_quotes(fair_value, spread_width, inventory, skew_strength):
         'ask': float(base_ask - shift)
     }
 
-# Step 11 - update_fair_value_from_trade (not yet solved)
-# TODO: implement
+# Step 11 - update_fair_value_from_trade
+def update_fair_value_from_trade(fair_value, side, bid, ask, adjustment):
+    # Determine the direction of the adjustment based on trade side
+    # If a trader buys from us (side == 'buy' or similar), it implies upward pressure on the asset value.
+    # If a trader sells to us, it implies downward pressure.
+    if side == 'buy':
+        direction = 1.0
+    else:
+        direction = -1.0
+        
+    return float(fair_value + adjustment * direction)
 
 # Step 12 - update_remaining_card_value (not yet solved)
 # TODO: implement
