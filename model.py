@@ -231,9 +231,76 @@ def update_remaining_card_value(remaining_counts, revealed_value):
         'expected_value': float(ev)
     }
 
-# Step 13 - run_market_making_episode (not yet solved)
-# TODO: implement
+# Step 13 - run_market_making_episode
+import numpy as np
 
-# Step 14 - summarize_episode_pnls (not yet solved)
-# TODO: implement
+def run_market_making_episode(initial_fair_value, counterparty_sides, true_value, config):
+    # Extract config parameters with default values of 0 if missing
+    base_spread = config.get('base_spread', 0.0)
+    uncertainty = config.get('uncertainty', 0.0)
+    skew_strength = config.get('skew_strength', 0.0)
+    belief_adjustment = config.get('belief_adjustment', 0.0)
+    
+    current_fair_value = float(initial_fair_value)
+    cash = 0.0
+    inventory = 0.0
+    history = []
+    
+    for side in counterparty_sides:
+        # 1. Determine spread width using uncertainty
+        spread_width = uncertainty_spread(base_spread, uncertainty)
+        
+        # 2. Produce skewed quotes around current fair value based on inventory
+        quotes = inventory_skewed_quotes(current_fair_value, spread_width, inventory, skew_strength)
+        bid = quotes['bid']
+        ask = quotes['ask']
+        
+        # 3. Execute the counterparty trade
+        # execute_trade handles cash/inventory updates based on whether the counterparty buys or sells
+        trade_result = execute_trade(side, bid, ask, cash, inventory)
+        cash = trade_result['cash']
+        inventory = trade_result['inventory']
+        
+        # 4. Update fair-value belief from the trade
+        current_fair_value = update_fair_value_from_trade(
+            current_fair_value, side, bid, ask, belief_adjustment
+        )
+        
+        # 5. Record round history
+        history.append({
+            'bid': float(bid),
+            'ask': float(ask),
+            'side': side,
+            'cash': float(cash),
+            'inventory': float(inventory),
+            'fair_value': float(current_fair_value)
+        })
+        
+    # 6. Final settlement at true_value using mark_to_market_pnl
+    final_pnl = mark_to_market_pnl(cash, inventory, true_value)
+    
+    return {
+        'pnl': float(final_pnl),
+        'cash': float(cash),
+        'inventory': float(inventory),
+        'fair_value': float(current_fair_value),
+        'history': history
+    }
+
+# Step 14 - summarize_episode_pnls
+import numpy as np
+
+def summarize_episode_pnls(pnls):
+    arr = np.array(pnls, dtype=float)
+    
+    mean_val = float(np.mean(arr))
+    # Population standard deviation uses ddof=0
+    std_val = float(np.std(arr, ddof=0))
+    worst_val = float(np.min(arr))
+    
+    return {
+        'mean': mean_val,
+        'std': std_val,
+        'worst': worst_val
+    }
 
