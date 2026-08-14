@@ -17,11 +17,6 @@ def expected_value(values, probabilities):
     return mean
 
 # Step 2 - one_reroll_die_value
-import numpy as np
-
-def expected_value(values, probabilities):
-    return np.dot(values, probabilities)
-
 def one_reroll_die_value(sides):
     # Array of die faces: 1 to sides
     faces = np.arange(1, sides + 1)
