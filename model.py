@@ -28,8 +28,32 @@ def one_reroll_die_value(sides):
     
     return {'value': float(final_ev), 'reroll_faces': reroll_faces}
 
-# Step 3 - pay_per_reroll_die_game (not yet solved)
-# TODO: implement
+# Step 3 - pay_per_reroll_die_game
+def pay_per_reroll_die_game(sides, reroll_cost):
+    import numpy as np
+    faces = np.arange(1, sides + 1)
+    probabilities = np.array([1 / sides] * sides)
+    
+    best_val = -float('inf')
+    best_t = 1
+    
+    for T in range(1, sides + 2):
+        num_reroll = T - 1
+        num_keep = sides - num_reroll
+        if num_keep <= 0:
+            continue
+            
+        faces_ge_T = faces[faces >= T]
+        sum_faces_ge_T = np.sum(faces_ge_T) if len(faces_ge_T) > 0 else 0
+        
+        # Using the expected_value function for the kept subset or computing directly
+        val = (sum_faces_ge_T - num_reroll * reroll_cost) / num_keep
+        
+        if val > best_val:
+            best_val = val
+            best_t = T
+            
+    return {'threshold': int(best_t), 'value': float(best_val)}
 
 # Step 4 - red_black_card_game_value (not yet solved)
 # TODO: implement
