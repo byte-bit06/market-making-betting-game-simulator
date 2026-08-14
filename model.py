@@ -16,8 +16,28 @@ def expected_value(values, probabilities):
 
     return mean
 
-# Step 2 - one_reroll_die_value (not yet solved)
-# TODO: implement
+# Step 2 - one_reroll_die_value
+import numpy as np
+
+def expected_value(values, probabilities):
+    return np.dot(values, probabilities)
+
+def one_reroll_die_value(sides):
+    # Array of die faces: 1 to sides
+    faces = np.arange(1, sides + 1)
+    probabilities = np.array([1 / sides] * sides)
+    
+    # Calculate the expected value of a single roll using the required function
+    single_roll_ev = expected_value(faces, probabilities)
+    
+    
+    reroll_faces = [int(f) for f in faces if f < single_roll_ev]
+    
+    # Calculate the final expected winnings under the optimal policy
+    payoffs = np.maximum(faces, single_roll_ev)
+    final_ev = expected_value(payoffs, probabilities)
+    
+    return {'value': float(final_ev), 'reroll_faces': reroll_faces}
 
 # Step 3 - pay_per_reroll_die_game (not yet solved)
 # TODO: implement
