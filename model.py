@@ -113,20 +113,33 @@ def red_black_card_game_value(num_red, num_black):
 
 # Step 5 - make_quotes
 def make_quotes(fair_value, spread_width):
-    return {'bid': fair_value - spread_width/2, 'ask': fair_value + spread_width/2}
+    # Operational Guard: Prevent negative spreads or invalid types
+    if not isinstance(fair_value, (int, float)) or not isinstance(spread_width, (int, float)):
+        raise TypeError("Fair value and spread width must be numeric.")
+    if spread_width < 0:
+        raise ValueError("Spread width cannot be negative.")
+        
+    return {'bid': float(fair_value - spread_width/2), 'ask': float(fair_value + spread_width/2)}
 
 # Step 6 - execute_trade
 def execute_trade(state, side, bid, ask, size=1):
+    # Operational Guard: Validate state payload structure
+    if not isinstance(state, dict) or 'cash' not in state or 'inventory' not in state:
+        raise KeyError("Execution state missing required keys ('cash', 'inventory').")
+    if side not in ('buy', 'sell'):
+        raise ValueError(f"Unknown counterparty trade side: {side}. Expected 'buy' or 'sell'.")
+    if size <= 0:
+        raise ValueError("Trade size must be greater than zero.")
 
     if side == 'buy':
         newState = {
-            'cash': state['cash'] + ask*size,
-            'inventory': state['inventory'] - size
+            'cash': float(state['cash'] + ask * size),
+            'inventory': float(state['inventory'] - size)
         }
     else:
         newState = {
-            'cash': state['cash'] - bid*size,
-            'inventory': state['inventory'] + size
+            'cash': float(state['cash'] - bid * size),
+            'inventory': float(state['inventory'] + size)
         }
 
     return newState
@@ -235,40 +248,46 @@ def update_remaining_card_value(remaining_counts, revealed_value):
 import numpy as np
 
 def run_market_making_episode(initial_fair_value, counterparty_sides, true_value, config):
-    base_spread = config.get('base_spread', 0.0)
-    uncertainty = config.get('uncertainty', 0.0)
-    skew_strength = config.get('skew_strength', 0.0)
-    belief_adjustment = config.get('belief_adjustment', 0.0)
+    # Defensive configuration loading with safe defaults
+    base_spread = float(config.get('base_spread', 0.0))
+    uncertainty = float(config.get('uncertainty', 0.0))
+    skew_strength = float(config.get('skew_strength', 0.0))
+    belief_adjustment = float(config.get('belief_adjustment', 0.0))
     
     current_fair_value = float(initial_fair_value)
     cash = 0.0
     inventory = 0.0
     history = []
     
-    for side in counterparty_sides:
-        spread_width = uncertainty_spread(base_spread, uncertainty)
-        quotes = inventory_skewed_quotes(current_fair_value, spread_width, inventory, skew_strength)
-        bid = quotes['bid']
-        ask = quotes['ask']
-        
-        state = {'cash': cash, 'inventory': inventory}
-        trade_result = execute_trade(state, side, bid, ask, size=1)
-        cash = trade_result['cash']
-        inventory = trade_result['inventory']
-        
-        current_fair_value = update_fair_value_from_trade(
-            current_fair_value, side, bid, ask, belief_adjustment
-        )
-        
-        history.append({
-            'bid': float(bid),
-            'ask': float(ask),
-            'side': side,
-            'cash': float(cash),
-            'inventory': float(inventory),
-            'fair_value': float(current_fair_value)
-        })
-        
+    for idx, side in enumerate(counterparty_sides):
+        try:
+            spread_width = uncertainty_spread(base_spread, uncertainty)
+            quotes = inventory_skewed_quotes(current_fair_value, spread_width, inventory, skew_strength)
+            bid, ask = quotes['bid'], quotes['ask']
+            
+            state = {'cash': cash, 'inventory': inventory}
+            trade_result = execute_trade(state, side, bid, ask, size=1)
+            
+            cash = trade_result['cash']
+            inventory = trade_result['inventory']
+            current_fair_value = update_fair_value_from_trade(
+                current_fair_value, side, bid, ask, belief_adjustment
+            )
+            
+            history.append({
+                'step': idx,
+                'bid': float(bid),
+                'ask': float(ask),
+                'side': side,
+                'cash': float(cash),
+                'inventory': float(inventory),
+                'fair_value': float(current_fair_value)
+            })
+        except Exception as e:
+            # Operational Resilience: Log error context or handle malformed events gracefully
+            # In a production setting, this would log to a monitoring stream.
+            raise RuntimeError(f"Episode execution failed at step {idx} with side '{side}': {e}")
+            
     valuation_price = 100.0 if true_value == 99.0 else true_value
     final_pnl = mark_to_market_pnl(cash, inventory, valuation_price)
     
@@ -284,10 +303,16 @@ def run_market_making_episode(initial_fair_value, counterparty_sides, true_value
 import numpy as np
 
 def summarize_episode_pnls(pnls):
+    if not pnls:
+        return {'mean': 0.0, 'std': 0.0, 'worst': 0.0}
+        
     arr = np.array(pnls, dtype=float)
     
+    # Check for NaN or Inf contamination in telemetry data
+    if not np.isfinite(arr).all():
+        raise ValueError("PnL dataset contains non-finite values (NaN or Inf). Data pipeline corrupted.")
+    
     mean_val = float(np.mean(arr))
-    # Population standard deviation uses ddof=0
     std_val = float(np.std(arr, ddof=0))
     worst_val = float(np.min(arr))
     
